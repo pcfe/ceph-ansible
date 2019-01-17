@@ -82,9 +82,10 @@
 
     - name: set_fact osd_hosts
       set_fact:
-        osd_hosts: "{{ osd_hosts | default([]) + [ (item.stdout | from_json).crush_location.host ] }}"
+        osd_hosts: "{{ osd_hosts | default([]) + [ [ (item.stdout | from_json).crush_location.host, (item.stdout | from_json).osd_fsid ] ] }}"
       with_items: "{{ find_osd_hosts.results }}"
 
+<<<<<<< HEAD
     - name: check if ceph admin key exists on the osd nodes
       stat:
         path: "/etc/ceph/{{ cluster }}.client.admin.keyring"
@@ -129,6 +130,13 @@
       delegate_to: "{{ item.1 }}"
       when:
         - containerized_deployment
+=======
+    - name: mark osd(s) out of the cluster
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd out {{ item }}"
+      run_once: true
+      delegate_to: "{{ groups[mon_group_name][0] }}"
+      with_items: "{{ osd_to_kill.split(',') }}"
+>>>>>>> 9a43674d... shrink_osd: use cv zap by fsid to remove parts/lvs
 
     - name: find osd dedicated devices - non container
       shell: ceph-disk list | grep osd.{{ item.0 }} | grep -Eo '/dev/([hsv]d[a-z]{1,2})[0-9]{1,2}|/dev/nvme[0-9]n[0-9]p[0-9]'
@@ -147,6 +155,7 @@
         name: "ceph-osd@{{ item.0.stdout[:-2] | regex_replace('/dev/', '') if 'nvme' in item.0.stdout else item.0.stdout[:-1] | regex_replace('/dev/', '') }}"
         state: stopped
         enabled: no
+<<<<<<< HEAD
       with_together:
         - "{{ osd_to_kill_disks.results }}"
         - "{{ osd_hosts }}"
@@ -228,6 +237,24 @@
 
     - name: remove osd(s) from crush_map when ceph-disk destroy fail
       command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd crush remove osd.{{ item }}"
+=======
+      loop: "{{ osd_to_kill.split(',')|zip(osd_hosts)|list }}"
+      delegate_to: "{{ item.1.0 }}"
+
+    - name: zap osd devices
+      ceph_volume:
+        action: "zap"
+        osd_fsid: "{{ item.1 }}"
+      environment:
+        CEPH_VOLUME_DEBUG: 1
+        CEPH_CONTAINER_IMAGE: "{{ ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else None }}"
+        CEPH_CONTAINER_BINARY: "{{ container_binary }}"
+      delegate_to: "{{ item.0 }}"
+      loop: "{{ osd_hosts }}"
+
+    - name: purge osd(s) from the cluster
+      command: "{{ docker_exec_cmd }} ceph --cluster {{ cluster }} osd purge {{ item }} --yes-i-really-mean-it"
+>>>>>>> 9a43674d... shrink_osd: use cv zap by fsid to remove parts/lvs
       run_once: true
       delegate_to: "{{ groups[mon_group_name][0] }}"
       with_items: "{{ osd_to_kill.split(',') }}"
