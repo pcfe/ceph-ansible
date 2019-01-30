@@ -33,6 +33,7 @@ def node(host, request):
         'mimic': 13,
         'dev': 99
     }
+    ansible_distribution = host.ansible("setup")["ansible_facts"]['ansible_distribution']
 
     # capture the initial/default state
     test_is_applicable = False
@@ -68,9 +69,13 @@ def node(host, request):
     osd_ids = []
     osds = []
     cluster_address = ""
-    # I can assume eth1 because I know all the vagrant
-    # boxes we test with use that interface
-    address = host.interface("eth1").addresses[0]
+    if ansible_distribution == 'RedHat':
+        public_interface = 'ens5'
+        cluster_interface = 'ens6'
+    else:
+        public_interface = 'eth1'
+        cluster_interface = 'eth2'
+    address = host.interface(public_interface).addresses[0]
     subnet = ".".join(ansible_vars["public_network"].split(".")[0:-1])
     num_mons = len(ansible_vars["groups"]["mons"])
     if osd_auto_discovery:
@@ -88,10 +93,7 @@ def node(host, request):
     cluster_name = ansible_vars.get("cluster", "ceph")
     conf_path = "/etc/ceph/{}.conf".format(cluster_name)
     if "osds" in group_names:
-        # I can assume eth2 because I know all the vagrant
-        # boxes we test with use that interface. OSDs are the only
-        # nodes that have this interface.
-        cluster_address = host.interface("eth2").addresses[0]
+        cluster_address = host.interface(cluster_interface).addresses[0]
         cmd = host.run('sudo ls /var/lib/ceph/osd/ | sed "s/.*-//"')
         if cmd.rc == 0:
             osd_ids = cmd.stdout.rstrip("\n").split("\n")
