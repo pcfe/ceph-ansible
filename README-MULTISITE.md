@@ -33,7 +33,9 @@ rgw_multisite: true
 rgw_zone: jupiter
 rgw_zonemaster: true
 rgw_zonesecondary: false
+rgw_multisite_proto: "http"
 rgw_multisite_endpoint_addr: "{{ ansible_fqdn }}"
+rgw_multisite_endpoints_list: "{{ rgw_multisite_proto }}://{{ ansible_fqdn }}:{{ radosgw_frontend_port }}"
 rgw_zonegroup: solarsystem
 rgw_zone_user: zone.user
 rgw_realm: milkyway
@@ -58,7 +60,9 @@ rgw_multisite: true
 rgw_zone: mars
 rgw_zonemaster: false
 rgw_zonesecondary: true
+rgw_multisite_proto: "http"
 rgw_multisite_endpoint_addr: "{{ ansible_fqdn }}"
+rgw_multisite_endpoints_list: "{{ rgw_multisite_proto }}://{{ ansible_fqdn }}:{{ radosgw_frontend_port }}"
 rgw_zonegroup: solarsystem
 rgw_zone_user: zone.user
 rgw_realm: milkyway
